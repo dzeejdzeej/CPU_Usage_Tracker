@@ -1,9 +1,9 @@
-#include <stdio.h>
-
-extern void test_reader_1(void);
+extern void test_reader_cpu_stats(void);
+extern void test_reader_cpu_info(void);
 
 int main(void)
 {
-    printf("Not tested yet\n");
+    test_reader_cpu_stats();
+    test_reader_cpu_info();
     return 0;
 }

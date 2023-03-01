@@ -19,9 +19,15 @@ typedef struct CPU_stats
 
 typedef struct CPU_info 
 {
-    CPU_stats total;
-    CPU_stats core[MAX_NUMBER_OF_CORES];
+    CPU_stats* total;
+    CPU_stats* core[MAX_NUMBER_OF_CORES];
 } CPU_info;
+
+CPU_stats* CPU_stats_new(void);
+void CPU_stats_delete(CPU_stats* stats);
+
+CPU_info* CPU_info_new(void);
+void CPU_info_delete(CPU_info* info);
 
 void cpu_stats_parser(CPU_info *cpu);
 
