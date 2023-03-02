@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <assert.h>
-#include <reader.h>
+#include <cpu.h>
 
-void test_reader_cpu_stats(void);
-void test_reader_cpu_info(void);
+void test_cpu_stats(void);
+void test_cpu_info(void);
 
-void test_reader_cpu_stats(void)
+void test_cpu_stats(void)
 {
     CPU_stats* stats = CPU_stats_new();
 
@@ -16,7 +16,7 @@ void test_reader_cpu_stats(void)
     CPU_stats_delete(stats);
 }
 
-void test_reader_cpu_info(void)
+void test_cpu_info(void)
 {
     CPU_info* info = CPU_info_new();
 
