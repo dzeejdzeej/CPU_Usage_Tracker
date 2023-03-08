@@ -4,6 +4,7 @@
 
 void test_cpu_stats(void);
 void test_cpu_info(void);
+void test_cpu_stats_parser(void);
 
 void test_cpu_stats(void)
 {
@@ -24,6 +25,7 @@ void test_cpu_info(void)
     assert(info->total != NULL);
     assert(info->total->user == 0);
     assert(info->total->system == 0);
+    assert(info->is_filled == false);
     
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
     {
@@ -31,6 +33,29 @@ void test_cpu_info(void)
         assert(info->core[i]->user == 0);
         assert(info->core[i]->softirq == 0);
     }
+
+    CPU_info_delete(info);
+}
+
+void test_cpu_stats_parser(void)
+{
+    CPU_info* info = CPU_info_new();
+
+    assert(info->total->user == 0);
+    assert(info->total->system == 0);
+    assert(info->is_filled == false);
+    
+    for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
+    {
+        assert(info->core[i]->user == 0);
+        assert(info->core[i]->system == 0);
+    }
+
+    cpu_stats_parser(info);
+
+    assert(info->total->user > 0);
+    assert(info->total->system > 0);
+    assert(info->is_filled == true);
 
     CPU_info_delete(info);
 }
