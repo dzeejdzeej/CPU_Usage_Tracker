@@ -19,6 +19,16 @@ void CPU_stats_delete(CPU_stats* stats)
     free(stats);
 }
 
+bool cpu_info_is_empty(const CPU_info* info)
+{
+    return info->is_filled == false;
+}
+
+bool cpu_info_is_filled(const CPU_info* info)
+{
+    return info->is_filled == true;
+}
+
 CPU_info* CPU_info_new(void)
 {
     CPU_info* info = (CPU_info*) calloc(1, sizeof(*info));
@@ -31,6 +41,8 @@ CPU_info* CPU_info_new(void)
     {
         info->core[i] = CPU_stats_new();
     }
+
+    info->is_filled = false;
 
     return info;
 }
@@ -121,6 +133,53 @@ void cpu_stats_parser(CPU_info *cpu)
         }
     }
 
+    cpu->is_filled = true;
+
     CPU_stats_delete(stats);
     fclose(proc_file);
+}
+
+void cpu_usage_calculation(CPU_info *cpu)
+{
+    // @todo needs previous values for proper calculation
+    unsigned long long idle = cpu->total->idle + cpu->total->iowait;
+    unsigned long long non_idle = cpu->total->user + cpu->total->nice + cpu->total->system +
+                                  cpu->total->softirq + cpu->total->steal;
+
+    unsigned long long total = idle + non_idle;
+    double cpu_percentage = ( ((double)total - (double)idle) / (double)total ) * 100.0;
+    printf("CPU percentage: %f\n", cpu_percentage);
+
+    cpu->is_filled = false;
+}
+
+// Multithread functions
+void cpu_info_lock(CPU_info* info)
+{
+    pthread_mutex_lock(&info->mutex);
+}
+
+void cpu_info_unlock(CPU_info* info)
+{
+    pthread_mutex_unlock(&info->mutex);
+}
+
+void cpu_info_call_reader(CPU_info* info)
+{
+    pthread_cond_signal(&info->can_read);
+}
+
+void cpu_info_call_analyzer(CPU_info* info)
+{
+    pthread_cond_signal(&info->can_analyze);
+}
+
+void cpu_info_wait_for_reader(CPU_info* info)
+{
+    pthread_cond_wait(&info->can_analyze, &info->mutex);
+}
+
+void cpu_info_wait_for_analyzer(CPU_info* info)
+{
+    pthread_cond_wait(&info->can_read, &info->mutex);
 }
