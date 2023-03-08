@@ -56,6 +56,6 @@ void test_cpu_stats_parser(void)
     assert(info->total->user > 0);
     assert(info->total->system > 0);
     assert(info->is_filled == true);
-    
+
     CPU_info_delete(info);
 }
