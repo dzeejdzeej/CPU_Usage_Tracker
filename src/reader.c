@@ -30,6 +30,7 @@ void* reader_thread(void* arg)
         }
 
         printf("[%d] Reader Thread can read and parse /proc/stats data\n", reader_id);
+        // call main functionality of the thread
         cpu_stats_parser(cpu_info);
 
         cpu_info_call_analyzer(cpu_info);

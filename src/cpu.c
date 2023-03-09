@@ -3,6 +3,11 @@
 #include <string.h>
 #include <cpu.h>
 
+unsigned long long prev_idle_total     = 0;
+unsigned long long prev_non_idle_total = 0;
+unsigned long long prev_idle_cpu[MAX_NUMBER_OF_CORES]     = {0};
+unsigned long long prev_non_idle_cpu[MAX_NUMBER_OF_CORES] = {0};
+
 CPU_stats* CPU_stats_new(void)
 {
     CPU_stats* const stats = (CPU_stats*) calloc(1, sizeof(*stats));
@@ -141,15 +146,57 @@ void cpu_stats_parser(CPU_info *cpu)
 
 void cpu_usage_calculation(CPU_info *cpu)
 {
-    // @todo needs previous values for proper calculation
-    unsigned long long idle = cpu->total->idle + cpu->total->iowait;
-    unsigned long long non_idle = cpu->total->user + cpu->total->nice + cpu->total->system +
-                                  cpu->total->softirq + cpu->total->steal;
+    // Calculates total (summary of all CPUs)
+    unsigned long long idle_total     = cpu->total->idle + cpu->total->iowait;
+    unsigned long long non_idle_total = cpu->total->user + cpu->total->nice + cpu->total->system +
+                                        cpu->total->softirq + cpu->total->steal;
 
-    unsigned long long total = idle + non_idle;
-    double cpu_percentage = ( ((double)total - (double)idle) / (double)total ) * 100.0;
-    printf("CPU percentage: %f\n", cpu_percentage);
+    unsigned long long all_total      = idle_total      + non_idle_total;
+    unsigned long long prev_all_total = prev_idle_total + prev_non_idle_total;
 
+    double all_by_sec_total  = (double)all_total  - (double)prev_all_total;
+    double idle_by_sec_total = (double)idle_total - (double)prev_idle_total;
+
+    double cpu_percentage_total = (all_by_sec_total - idle_by_sec_total) / all_by_sec_total * 100.0;
+
+    printf("CPU percentage for total (sum of all CPUs): %.2f%%\n", cpu_percentage_total);
+
+    // save this values for another calculation
+    prev_idle_total     = idle_total;
+    prev_non_idle_total = non_idle_total;
+
+
+    // Calculates per CPU
+    unsigned long long idle_cpu[MAX_NUMBER_OF_CORES]           = {0};
+    unsigned long long non_idle_cpu[MAX_NUMBER_OF_CORES]       = {0};
+    unsigned long long all_cpu[MAX_NUMBER_OF_CORES]            = {0};
+    unsigned long long prev_all_cpu[MAX_NUMBER_OF_CORES]       = {0};
+    double             all_by_sec_cpu[MAX_NUMBER_OF_CORES]     = {0};
+    double             idle_by_sec_cpu[MAX_NUMBER_OF_CORES]    = {0};
+    double             cpu_percentage_cpu[MAX_NUMBER_OF_CORES] = {0};
+
+    for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
+    {
+        idle_cpu[i]     = cpu->core[i]->idle + cpu->core[i]->iowait;
+        non_idle_cpu[i] = cpu->core[i]->user + cpu->core[i]->nice + cpu->core[i]->system +
+                          cpu->core[i]->softirq + cpu->core[i]->steal;
+
+        all_cpu[i]      = idle_cpu[i]      + non_idle_cpu[i];
+        prev_all_cpu[i] = prev_idle_cpu[i] + prev_non_idle_cpu[i];
+
+        all_by_sec_cpu[i]  = (double)all_cpu[i]  - (double)prev_all_cpu[i];
+        idle_by_sec_cpu[i] = (double)idle_cpu[i] - (double)prev_idle_cpu[i];
+
+        cpu_percentage_cpu[i] = (all_by_sec_cpu[i] - idle_by_sec_cpu[i]) / all_by_sec_cpu[i] * 100.0;
+
+        printf("CPU[%d] percentage: %.2f%%\n", i, cpu_percentage_cpu[i]);
+
+        // save this values for another calculation
+        prev_idle_cpu[i]     = idle_cpu[i];
+        prev_non_idle_cpu[i] = non_idle_cpu[i];
+    }
+
+    // indicates that new data has been analyzed and now we're waitng for new portion
     cpu->is_filled = false;
 }
 

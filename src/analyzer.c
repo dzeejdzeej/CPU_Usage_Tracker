@@ -27,6 +27,7 @@ void* analyzer_thread(void* arg)
         }
 
         printf("[%d] Analyzer Thread can analyze /proc/stats data\n", analyzer_id);
+        // call main functionality of the thread
         cpu_usage_calculation(cpu_info);
 
         cpu_info_call_reader(cpu_info);
