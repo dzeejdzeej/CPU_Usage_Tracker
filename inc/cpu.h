@@ -34,6 +34,7 @@ typedef struct CPU_info
 // struct between analyzer and printer
 typedef struct CPU_usage
 {
+    bool is_filled;
     double cpu_percentage_total;
     double cpu_percentage_cpu[MAX_NUMBER_OF_CORES];
     pthread_mutex_t mutex;
@@ -61,9 +62,12 @@ void CPU_combined_delete(CPU_combined* combined);
 
 bool cpu_info_is_empty(const CPU_info* info);
 bool cpu_info_is_filled(const CPU_info* info);
+bool cpu_usage_is_empty(const CPU_usage* usage);
+bool cpu_usage_is_filled(const CPU_usage* usage);
 
 void cpu_stats_parser(CPU_info *cpu);
 void cpu_usage_calculation(CPU_info* cpu, CPU_usage* usage);
+void cpu_usage_print(CPU_usage* cpu_usage);
 
 // Multithread functions for reader <-> analyzer
 void cpu_info_lock(CPU_info* info);

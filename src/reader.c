@@ -35,6 +35,7 @@ void* reader_thread(void* arg)
 
         cpu_info_call_analyzer(cpu_info);
         cpu_info_unlock(cpu_info);
+
         printf("[%d] Reader Thread finished\n", reader_id);
     }
 
