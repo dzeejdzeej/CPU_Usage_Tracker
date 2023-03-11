@@ -73,6 +73,44 @@ void CPU_info_delete(CPU_info* info)
     free(info);
 }
 
+CPU_usage* CPU_usage_new(void)
+{
+    CPU_usage* usage = (CPU_usage*) calloc(1, sizeof(*usage));
+    if (usage == NULL)
+        return NULL;
+
+    return usage;
+}
+
+void CPU_usage_delete(CPU_usage* usage)
+{
+    if (usage == NULL)
+        return;
+
+    free(usage);
+}
+
+CPU_combined* CPU_combined_new(CPU_info* info, CPU_usage* usage)
+{
+    CPU_combined* combined = (CPU_combined*)malloc(sizeof(*combined));
+
+    if (combined == NULL)
+        return NULL;
+
+    combined->info = info;
+    combined->usage = usage;
+
+    return combined;
+}
+
+void CPU_combined_delete(CPU_combined* combined)
+{
+    if (combined == NULL)
+        return;
+
+    free(combined);
+}
+
 void cpu_stats_parser(CPU_info *cpu) 
 {
     char line_buffer[256];
@@ -144,7 +182,7 @@ void cpu_stats_parser(CPU_info *cpu)
     fclose(proc_file);
 }
 
-void cpu_usage_calculation(CPU_info *cpu)
+void cpu_usage_calculation(CPU_info* cpu, CPU_usage* usage)
 {
     // Calculates total (summary of all CPUs)
     unsigned long long idle_total     = cpu->total->idle + cpu->total->iowait;
@@ -156,10 +194,10 @@ void cpu_usage_calculation(CPU_info *cpu)
 
     double all_by_sec_total  = (double)all_total  - (double)prev_all_total;
     double idle_by_sec_total = (double)idle_total - (double)prev_idle_total;
+    
+    usage->cpu_percentage_total = (all_by_sec_total - idle_by_sec_total) / all_by_sec_total * 100.0;
 
-    double cpu_percentage_total = (all_by_sec_total - idle_by_sec_total) / all_by_sec_total * 100.0;
-
-    printf("CPU percentage for total (sum of all CPUs): %.2f%%\n", cpu_percentage_total);
+    printf("CPU percentage for total (sum of all CPUs): %.2f%%\n", usage->cpu_percentage_total);
 
     // save this values for another calculation
     prev_idle_total     = idle_total;
@@ -173,7 +211,6 @@ void cpu_usage_calculation(CPU_info *cpu)
     unsigned long long prev_all_cpu[MAX_NUMBER_OF_CORES]       = {0};
     double             all_by_sec_cpu[MAX_NUMBER_OF_CORES]     = {0};
     double             idle_by_sec_cpu[MAX_NUMBER_OF_CORES]    = {0};
-    double             cpu_percentage_cpu[MAX_NUMBER_OF_CORES] = {0};
 
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
     {
@@ -187,9 +224,10 @@ void cpu_usage_calculation(CPU_info *cpu)
         all_by_sec_cpu[i]  = (double)all_cpu[i]  - (double)prev_all_cpu[i];
         idle_by_sec_cpu[i] = (double)idle_cpu[i] - (double)prev_idle_cpu[i];
 
-        cpu_percentage_cpu[i] = (all_by_sec_cpu[i] - idle_by_sec_cpu[i]) / all_by_sec_cpu[i] * 100.0;
+        usage->cpu_percentage_cpu[i] = 
+            (all_by_sec_cpu[i] - idle_by_sec_cpu[i]) / all_by_sec_cpu[i] * 100.0;
 
-        printf("CPU[%d] percentage: %.2f%%\n", i, cpu_percentage_cpu[i]);
+        printf("CPU[%d] percentage: %.2f%%\n", i, usage->cpu_percentage_cpu[i]);
 
         // save this values for another calculation
         prev_idle_cpu[i]     = idle_cpu[i];
@@ -200,7 +238,7 @@ void cpu_usage_calculation(CPU_info *cpu)
     cpu->is_filled = false;
 }
 
-// Multithread functions
+// Multithread functions for reader <-> analyzer
 void cpu_info_lock(CPU_info* info)
 {
     pthread_mutex_lock(&info->mutex);
@@ -229,4 +267,34 @@ void cpu_info_wait_for_reader(CPU_info* info)
 void cpu_info_wait_for_analyzer(CPU_info* info)
 {
     pthread_cond_wait(&info->can_read, &info->mutex);
+}
+
+// Multithread functions for analyzer <-> printer
+void cpu_usage_lock(CPU_usage* usage)
+{
+    pthread_mutex_lock(&usage->mutex);
+}
+void cpu_usage_unlock(CPU_usage* usage)
+{
+    pthread_mutex_unlock(&usage->mutex);
+}
+
+void cpu_usage_call_analyzer(CPU_usage* usage)
+{
+    pthread_cond_signal(&usage->can_analyze);
+}
+
+void cpu_usage_call_printer(CPU_usage* usage)
+{
+    pthread_cond_signal(&usage->can_print);
+}
+
+void cpu_usage_wait_for_analyzer(CPU_usage* usage)
+{
+    pthread_cond_wait(&usage->can_print, &usage->mutex);
+}
+
+void cpu_usage_wait_for_printer(CPU_usage* usage)
+{
+    pthread_cond_wait(&usage->can_analyze, &usage->mutex);
 }
