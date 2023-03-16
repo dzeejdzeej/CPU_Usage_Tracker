@@ -8,12 +8,17 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+pthread_t printer;
+time_t printer_thread_last_activity = 0;
+
 void* printer_thread(void* arg)
 {
     CPU_usage* cpu_usage = *(CPU_usage**)arg;
 
     while(true)
     {
+        printer_thread_last_activity = time(NULL);
+
         pid_t printer_id = (pid_t)syscall(SYS_gettid);
         printf("[%d] Printer Thread starts\n", printer_id);
 

@@ -5,8 +5,11 @@
 #include <watchdog.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <unistd.h>
 
-int main(void)
+void test_watchdog(void);
+
+void test_watchdog(void)
 {
     pthread_t watchdog;
 
@@ -16,6 +19,7 @@ int main(void)
 
     pthread_create(&reader,    NULL, reader_thread,   (void*)&cpu);
     pthread_create(&analyzer,  NULL, analyzer_thread, (void*)&combined);
+    sleep(4);
     pthread_create(&printer,   NULL, printer_thread,  (void*)&usage);
     pthread_create(&watchdog,  NULL, watchdog_thread, NULL);
 
@@ -27,6 +31,4 @@ int main(void)
     CPU_info_delete(cpu);
     CPU_usage_delete(usage);
     CPU_combined_delete(combined);
-
-    return 0;
 }

@@ -9,12 +9,17 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+pthread_t reader;
+time_t reader_thread_last_activity = 0;
+
 void* reader_thread(void* arg)
 {
     CPU_info* cpu_info = *(CPU_info**)arg;
 
     while(true)
     {
+        reader_thread_last_activity = time(NULL);
+
         pid_t reader_id = (pid_t)syscall(SYS_gettid);
         printf("[%d] Reader Thread starts\n", reader_id);
 

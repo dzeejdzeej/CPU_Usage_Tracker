@@ -8,12 +8,17 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+pthread_t analyzer;
+time_t analyzer_thread_last_activity = 0;
+
 void* analyzer_thread(void* arg)
 {
     CPU_combined* cpu_combined = *(CPU_combined**)arg;
 
     while(true)
     {
+        analyzer_thread_last_activity = time(NULL);
+
         pid_t analyzer_id = (pid_t)syscall(SYS_gettid);
         printf("[%d] Analyzer Thread starts\n", analyzer_id);
 
