@@ -10,9 +10,8 @@
 #include <pthread.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include <signal.h>
 #include <time.h>
-
-static void terminate_program(void);
 
 void* watchdog_thread(void* arg)
 {
@@ -27,19 +26,19 @@ void* watchdog_thread(void* arg)
         if ( (current_time - reader_thread_last_activity) > THREAD_TIMER)
         {
             printf("[%d] Thread Reader has stuck for more than 2 secounds\n", watchdog_id);
-            terminate_program();
+            kill(getpid(), SIGTERM);
         }
 
         if ( (current_time - analyzer_thread_last_activity) > THREAD_TIMER)
         {
             printf("[%d] Thread Analyzer has stuck for more than 2 secounds\n", watchdog_id);
-            terminate_program();
+            kill(getpid(), SIGTERM);
         }
 
         if ( (current_time - printer_thread_last_activity) > THREAD_TIMER)
         {
             printf("[%d] Thread Printer has stuck for more than 2 secounds\n", watchdog_id);
-            terminate_program();
+            kill(getpid(), SIGTERM);
         }
 
         // check just once per TIMEOUT
@@ -47,12 +46,4 @@ void* watchdog_thread(void* arg)
     }
 
     return NULL;
-}
-
-static void terminate_program(void)
-{
-    pthread_cancel(reader);
-    pthread_cancel(analyzer);
-    pthread_cancel(printer);
-    exit(EXIT_FAILURE);
 }

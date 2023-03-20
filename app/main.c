@@ -5,14 +5,25 @@
 #include <watchdog.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <unistd.h>
+#include <signal.h>
+#include <stdlib.h>
+
+static void signal_handler(int sig);
+
+CPU_info*     cpu;
+CPU_usage*    usage;
+CPU_combined* combined;
+pthread_t     watchdog;
 
 int main(void)
 {
-    pthread_t watchdog;
+    cpu      = CPU_info_new();
+    usage    = CPU_usage_new();
+    combined = CPU_combined_new(cpu, usage);
 
-    CPU_info*     cpu      = CPU_info_new();
-    CPU_usage*    usage    = CPU_usage_new();
-    CPU_combined* combined = CPU_combined_new(cpu, usage);
+    signal(SIGINT,  &signal_handler);
+    signal(SIGTERM, &signal_handler);
 
     pthread_create(&reader,    NULL, reader_thread,   (void*)&cpu);
     pthread_create(&analyzer,  NULL, analyzer_thread, (void*)&combined);
@@ -24,9 +35,24 @@ int main(void)
     pthread_join(printer,   NULL);
     pthread_join(watchdog,  NULL);
 
+    return 0;
+}
+
+static void signal_handler(int sig)
+{
+    if (sig == SIGINT)
+        printf("Program closed by SIGINT signal\n");
+    else if (sig ==SIGTERM)
+        printf("Program closed by SIGTERM signal\n");
+
     CPU_info_delete(cpu);
     CPU_usage_delete(usage);
     CPU_combined_delete(combined);
 
-    return 0;
+    pthread_cancel(reader);
+    pthread_cancel(analyzer);
+    pthread_cancel(printer);
+    pthread_cancel(watchdog);
+
+    exit(EXIT_SUCCESS);
 }
