@@ -1,6 +1,7 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <stdint.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -8,16 +9,13 @@
 
 typedef struct CPU_stats
 {
-    unsigned long long user;
-    unsigned long long nice;
-    unsigned long long system;
-    unsigned long long idle;
-    unsigned long long iowait;
-    unsigned long long irq;
-    unsigned long long softirq;
-    unsigned long long steal;
-    unsigned long long guest;
-    unsigned long long guest_nice;
+    uint64_t user;
+    uint64_t nice;
+    uint64_t system;
+    uint64_t idle;
+    uint64_t iowait;
+    uint64_t softirq;
+    uint64_t steal;
 } CPU_stats;
 
 // struct between reader and analyzer

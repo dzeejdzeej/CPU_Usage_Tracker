@@ -5,7 +5,7 @@
 #include <time.h>
 
 extern pthread_t reader;
-extern time_t reader_thread_last_activity;
+extern volatile time_t reader_thread_last_activity;
 
 void* reader_thread(void* arg);
 
