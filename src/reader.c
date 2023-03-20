@@ -21,7 +21,8 @@ void* reader_thread(void* arg)
         reader_thread_last_activity = time(NULL);
 
         pid_t reader_id = (pid_t)syscall(SYS_gettid);
-        printf("[%d] Reader Thread starts\n", reader_id);
+        (void) reader_id; // eventually just for logger puropose
+        //printf("[%d] Reader Thread starts\n", reader_id);
 
         // Reads data each secound
         sleep(1);
@@ -30,18 +31,18 @@ void* reader_thread(void* arg)
 
         if (cpu_info_is_filled(cpu_info) == true)
         {
-            printf("[%d] Reader Thread waits for Analyzer to process CPU_info\n", reader_id);
+            //printf("[%d] Reader Thread waits for Analyzer to process CPU_info\n", reader_id);
             cpu_info_wait_for_analyzer(cpu_info);
         }
 
-        printf("[%d] Reader Thread can read and parse /proc/stats data\n", reader_id);
+        //printf("[%d] Reader Thread can read and parse /proc/stats data\n", reader_id);
         // call main functionality of the thread
         cpu_stats_parser(cpu_info);
 
         cpu_info_call_analyzer(cpu_info);
         cpu_info_unlock(cpu_info);
 
-        printf("[%d] Reader Thread finished\n", reader_id);
+        //printf("[%d] Reader Thread finished\n", reader_id);
     }
 
     return NULL;

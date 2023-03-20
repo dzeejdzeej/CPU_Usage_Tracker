@@ -22,6 +22,7 @@ void* watchdog_thread(void* arg)
     {
         time_t current_time = time(NULL);
         pid_t watchdog_id = (pid_t)syscall(SYS_gettid);
+        (void) watchdog_id; // eventually just for logger puropose
 
         if ( (current_time - reader_thread_last_activity) > THREAD_TIMER)
         {
