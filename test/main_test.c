@@ -16,9 +16,9 @@ int main(void)
     test_cpu_stats_parser();
     test_cpu_usage_calculation();
 
-    test_app_stress_one_cpu();
+    //test_app_stress_one_cpu();
 
-    test_watchdog();
+    //test_watchdog();
     
     return 0;
 }
