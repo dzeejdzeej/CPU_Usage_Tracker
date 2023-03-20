@@ -106,11 +106,8 @@ void test_cpu_usage_calculation(void)
         .system     = 500,
         .idle       = 500,
         .iowait     = 1000,
-        .irq        = 0,
         .softirq    = 250,
-        .steal      = 0,
-        .guest      = 0,
-        .guest_nice = 0
+        .steal      = 0
     };
 
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i) 
@@ -122,11 +119,8 @@ void test_cpu_usage_calculation(void)
             .system     = 250,
             .idle       = 750,
             .iowait     = 250,
-            .irq        = 0,
             .softirq    = 500,
-            .steal      = 1000,
-            .guest      = 0,
-            .guest_nice = 0
+            .steal      = 1000
         };
     }
 

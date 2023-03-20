@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 pthread_t analyzer;
-time_t analyzer_thread_last_activity = 0;
+volatile time_t analyzer_thread_last_activity = 0;
 
 void* analyzer_thread(void* arg)
 {

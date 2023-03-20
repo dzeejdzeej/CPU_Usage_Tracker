@@ -3,10 +3,10 @@
 #include <string.h>
 #include <cpu.h>
 
-unsigned long long prev_idle_total     = 0;
-unsigned long long prev_non_idle_total = 0;
-unsigned long long prev_idle_cpu[MAX_NUMBER_OF_CORES]     = {0};
-unsigned long long prev_non_idle_cpu[MAX_NUMBER_OF_CORES] = {0};
+uint64_t prev_idle_total     = 0;
+uint64_t prev_non_idle_total = 0;
+uint64_t prev_idle_cpu[MAX_NUMBER_OF_CORES]     = {0};
+uint64_t prev_non_idle_cpu[MAX_NUMBER_OF_CORES] = {0};
 
 CPU_stats* CPU_stats_new(void)
 {
@@ -26,40 +26,36 @@ void CPU_stats_delete(CPU_stats* stats)
 
 CPU_info* CPU_info_new(void)
 {
-    CPU_info* info = (CPU_info*) calloc(1, sizeof(*info));
+    CPU_info* info = (CPU_info*) malloc(sizeof(*info));
     if (info == NULL)
         return NULL;
 
-    pthread_mutex_init(&info->mutex, NULL);
-    pthread_cond_init(&info->can_read, NULL);
-    pthread_cond_init(&info->can_analyze, NULL);
-
     info->is_filled   = false;
-    
     info->total = CPU_stats_new();
-    
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
     {
         info->core[i] = CPU_stats_new();
     }
+
+    pthread_mutex_init(&info->mutex, NULL);
+    pthread_cond_init(&info->can_read, NULL);
+    pthread_cond_init(&info->can_analyze, NULL);
 
     return info;
 }
 
 void CPU_info_delete(CPU_info* info)
 {
-    if (info->total == NULL)
-        return;
-
-    free(info->total);
+    CPU_stats_delete(info->total);
 
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
     {
-        if (info->core[i] == NULL)
-            return;
-        
-        free(info->core[i]);
+        CPU_stats_delete(info->core[i]);
     }
+
+    pthread_mutex_destroy(&info->mutex);
+    pthread_cond_destroy(&info->can_read);
+    pthread_cond_destroy(&info->can_analyze);
 
     if (info == NULL)
         return;
@@ -69,15 +65,20 @@ void CPU_info_delete(CPU_info* info)
 
 CPU_usage* CPU_usage_new(void)
 {
-    CPU_usage* usage = (CPU_usage*) calloc(1, sizeof(*usage));
+    CPU_usage* usage = (CPU_usage*) malloc(sizeof(*usage));
     if (usage == NULL)
         return NULL;
+
+    usage->is_filled = false;
+    usage->cpu_percentage_total = 0.0;
+    for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
+    {
+        usage->cpu_percentage_cpu[i] = 0.0;
+    }
 
     pthread_mutex_init(&usage->mutex, NULL);
     pthread_cond_init(&usage->can_print, NULL);
     pthread_cond_init(&usage->can_analyze, NULL);
-
-    usage->is_filled = false;
 
     return usage;
 }
@@ -86,6 +87,10 @@ void CPU_usage_delete(CPU_usage* usage)
 {
     if (usage == NULL)
         return;
+
+    pthread_mutex_destroy(&usage->mutex);
+    pthread_cond_destroy(&usage->can_analyze);
+    pthread_cond_destroy(&usage->can_print);
 
     free(usage);
 }
@@ -153,17 +158,14 @@ void cpu_stats_parser(CPU_info *cpu)
         // "cpu " indicates line where we got accumulated values from each CPU
         if (strncmp(line_buffer, "cpu ", 4) == 0) 
         {
-            sscanf(line_buffer + 4, "%llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+            sscanf(line_buffer + 4, "%lu %lu %lu %lu %lu %lu %lu",
                    &stats->user,
                    &stats->nice,
                    &stats->system,
                    &stats->idle,
                    &stats->iowait,
-                   &stats->irq,
                    &stats->softirq,
-                   &stats->steal,
-                   &stats->guest,
-                   &stats->guest_nice);
+                   &stats->steal);
             
             memcpy(cpu->total, stats, sizeof(*stats));
         }
@@ -171,18 +173,15 @@ void cpu_stats_parser(CPU_info *cpu)
         else if (strncmp(line_buffer, "cpu", 3) == 0) 
         {
             int core_id;
-            sscanf(line_buffer + 3, "%d %llu %llu %llu %llu %llu %llu %llu %llu %llu %llu",
+            sscanf(line_buffer + 3, "%d %lu %lu %lu %lu %lu %lu %lu",
                    &core_id,
                    &stats->user,
                    &stats->nice,
                    &stats->system,
                    &stats->idle,
                    &stats->iowait,
-                   &stats->irq,
                    &stats->softirq,
-                   &stats->steal,
-                   &stats->guest,
-                   &stats->guest_nice);
+                   &stats->steal);
 
             if (core_id >= 0 && core_id < MAX_NUMBER_OF_CORES) 
             {
@@ -205,12 +204,12 @@ void cpu_stats_parser(CPU_info *cpu)
 void cpu_usage_calculation(CPU_info* cpu, CPU_usage* usage)
 {
     // Calculates total (summary of all CPUs)
-    unsigned long long idle_total     = cpu->total->idle + cpu->total->iowait;
-    unsigned long long non_idle_total = cpu->total->user + cpu->total->nice + cpu->total->system +
-                                        cpu->total->softirq + cpu->total->steal;
+    uint64_t idle_total     = cpu->total->idle + cpu->total->iowait;
+    uint64_t non_idle_total = cpu->total->user + cpu->total->nice + cpu->total->system +
+                              cpu->total->softirq + cpu->total->steal;
 
-    unsigned long long all_total      = idle_total      + non_idle_total;
-    unsigned long long prev_all_total = prev_idle_total + prev_non_idle_total;
+    uint64_t all_total      = idle_total      + non_idle_total;
+    uint64_t prev_all_total = prev_idle_total + prev_non_idle_total;
 
     double all_by_sec_total  = (double)all_total  - (double)prev_all_total;
     double idle_by_sec_total = (double)idle_total - (double)prev_idle_total;
@@ -223,12 +222,12 @@ void cpu_usage_calculation(CPU_info* cpu, CPU_usage* usage)
 
 
     // Calculates per CPU
-    unsigned long long idle_cpu[MAX_NUMBER_OF_CORES]           = {0};
-    unsigned long long non_idle_cpu[MAX_NUMBER_OF_CORES]       = {0};
-    unsigned long long all_cpu[MAX_NUMBER_OF_CORES]            = {0};
-    unsigned long long prev_all_cpu[MAX_NUMBER_OF_CORES]       = {0};
-    double             all_by_sec_cpu[MAX_NUMBER_OF_CORES]     = {0};
-    double             idle_by_sec_cpu[MAX_NUMBER_OF_CORES]    = {0};
+    uint64_t idle_cpu[MAX_NUMBER_OF_CORES]           = {0};
+    uint64_t non_idle_cpu[MAX_NUMBER_OF_CORES]       = {0};
+    uint64_t all_cpu[MAX_NUMBER_OF_CORES]            = {0};
+    uint64_t prev_all_cpu[MAX_NUMBER_OF_CORES]       = {0};
+    double   all_by_sec_cpu[MAX_NUMBER_OF_CORES]     = {0};
+    double   idle_by_sec_cpu[MAX_NUMBER_OF_CORES]    = {0};
 
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)
     {
@@ -259,6 +258,9 @@ void cpu_usage_calculation(CPU_info* cpu, CPU_usage* usage)
 
 void cpu_usage_print(CPU_usage* cpu_usage)
 {
+    //clear the terminal window by ANSI escape sequence
+    printf("\033[2J");
+
     printf("CPU usage total: %.2f%%\n", cpu_usage->cpu_percentage_total);
 
     for (int i = 0; i < MAX_NUMBER_OF_CORES; ++i)

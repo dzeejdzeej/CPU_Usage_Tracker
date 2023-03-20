@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 pthread_t printer;
-time_t printer_thread_last_activity = 0;
+volatile time_t printer_thread_last_activity = 0;
 
 void* printer_thread(void* arg)
 {

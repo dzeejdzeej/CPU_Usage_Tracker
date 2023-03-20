@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 pthread_t reader;
-time_t reader_thread_last_activity = 0;
+volatile time_t reader_thread_last_activity = 0;
 
 void* reader_thread(void* arg)
 {
