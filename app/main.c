@@ -9,7 +9,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
-static void signal_handler(int sig);
+static void signal_termination_handler(int sig);
 
 CPU_info*     cpu;
 CPU_usage*    usage;
@@ -22,8 +22,8 @@ int main(void)
     usage    = CPU_usage_new();
     combined = CPU_combined_new(cpu, usage);
 
-    signal(SIGINT,  &signal_handler);
-    signal(SIGTERM, &signal_handler);
+    signal(SIGINT,  &signal_termination_handler);
+    signal(SIGTERM, &signal_termination_handler);
 
     pthread_create(&reader,    NULL, reader_thread,   (void*)&cpu);
     pthread_create(&analyzer,  NULL, analyzer_thread, (void*)&combined);
@@ -38,21 +38,21 @@ int main(void)
     return 0;
 }
 
-static void signal_handler(int sig)
+static void signal_termination_handler(int sig)
 {
-    if (sig == SIGINT)
-        printf("Program closed by SIGINT signal\n");
-    else if (sig ==SIGTERM)
-        printf("Program closed by SIGTERM signal\n");
+    terminate_reader   = 1;
+    terminate_analyzer = 1;
+    terminate_printer  = 1;
+    terminate_watchdog = 1;
 
     CPU_info_delete(cpu);
     CPU_usage_delete(usage);
     CPU_combined_delete(combined);
 
-    pthread_cancel(reader);
-    pthread_cancel(analyzer);
-    pthread_cancel(printer);
-    pthread_cancel(watchdog);
+    if (sig == SIGINT)
+        printf("Program closed by SIGINT signal\n");
+    else if (sig ==SIGTERM)
+        printf("Program closed by SIGTERM signal\n");
 
     exit(EXIT_SUCCESS);
 }

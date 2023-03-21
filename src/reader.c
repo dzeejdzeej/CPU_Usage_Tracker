@@ -11,12 +11,13 @@
 
 pthread_t reader;
 volatile time_t reader_thread_last_activity = 0;
+volatile sig_atomic_t terminate_reader = 0;
 
 void* reader_thread(void* arg)
 {
     CPU_info* cpu_info = *(CPU_info**)arg;
 
-    while(true)
+    while(terminate_reader == 0)
     {
         reader_thread_last_activity = time(NULL);
 

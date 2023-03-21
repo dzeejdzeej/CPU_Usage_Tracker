@@ -10,7 +10,6 @@
 #include <signal.h>
 
 void test_watchdog(void);
-static void signal_handler(int sig);
 
 CPU_info*     cpu;
 CPU_usage*    usage;
@@ -24,9 +23,6 @@ void test_watchdog(void)
     cpu      = CPU_info_new();
     usage    = CPU_usage_new();
     combined = CPU_combined_new(cpu, usage);
-
-    signal(SIGINT,  &signal_handler);
-    signal(SIGTERM, &signal_handler);
 
     pthread_create(&reader,    NULL, reader_thread,   (void*)&cpu);
     pthread_create(&analyzer,  NULL, analyzer_thread, (void*)&combined);
@@ -43,23 +39,4 @@ void test_watchdog(void)
     pthread_join(analyzer,  NULL);
     pthread_join(printer,   NULL);
     pthread_join(watchdog,  NULL);
-}
-
-static void signal_handler(int sig)
-{
-    if (sig == SIGINT)
-        printf("Program closed by SIGINT signal\n");
-    else if (sig ==SIGTERM)
-        printf("Program closed by SIGTERM signal\n");
-
-    CPU_info_delete(cpu);
-    CPU_usage_delete(usage);
-    CPU_combined_delete(combined);
-
-    pthread_cancel(reader);
-    pthread_cancel(analyzer);
-    pthread_cancel(printer);
-    pthread_cancel(watchdog);
-
-    exit(EXIT_SUCCESS);
 }

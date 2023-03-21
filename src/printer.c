@@ -10,12 +10,13 @@
 
 pthread_t printer;
 volatile time_t printer_thread_last_activity = 0;
+volatile sig_atomic_t terminate_printer = 0;
 
 void* printer_thread(void* arg)
 {
     CPU_usage* cpu_usage = *(CPU_usage**)arg;
 
-    while(true)
+    while(terminate_printer == 0)
     {
         printer_thread_last_activity = time(NULL);
 

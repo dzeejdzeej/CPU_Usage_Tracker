@@ -10,12 +10,13 @@
 
 pthread_t analyzer;
 volatile time_t analyzer_thread_last_activity = 0;
+volatile sig_atomic_t terminate_analyzer = 0;
 
 void* analyzer_thread(void* arg)
 {
     CPU_combined* cpu_combined = *(CPU_combined**)arg;
 
-    while(true)
+    while(terminate_analyzer == 0)
     {
         analyzer_thread_last_activity = time(NULL);
 

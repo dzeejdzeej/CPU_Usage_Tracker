@@ -10,26 +10,31 @@
 #include <assert.h>
 
 void test_app_stress_one_cpu(void);
+static void signal_termination_handler(int sig);
+
+CPU_info*     cpu_test;
+CPU_usage*    usage_test;
+CPU_combined* combined_test;
 
 void test_app_stress_one_cpu(void)
 {
     pthread_t watchdog;
 
-    CPU_info*     cpu      = CPU_info_new();
-    CPU_usage*    usage    = CPU_usage_new();
-    CPU_combined* combined = CPU_combined_new(cpu, usage);
+    cpu_test      = CPU_info_new();
+    usage_test    = CPU_usage_new();
+    combined_test = CPU_combined_new(cpu_test, usage_test);
 
-    pthread_create(&reader,    NULL, reader_thread,   (void*)&cpu);
-    pthread_create(&analyzer,  NULL, analyzer_thread, (void*)&combined);
-    pthread_create(&printer,   NULL, printer_thread,  (void*)&usage);
+    pthread_create(&reader,    NULL, reader_thread,   (void*)&cpu_test);
+    pthread_create(&analyzer,  NULL, analyzer_thread, (void*)&combined_test);
+    pthread_create(&printer,   NULL, printer_thread,  (void*)&usage_test);
     pthread_create(&watchdog,  NULL, watchdog_thread, NULL);
 
     // use this sleep to stabilize usage cpu values before check
     sleep(2);
 
     // check if at the start cpu usage is rather low
-    assert(usage->cpu_percentage_total > 0);
-    assert(usage->cpu_percentage_total < 5);
+    assert(usage_test->cpu_percentage_total > 0);
+    assert(usage_test->cpu_percentage_total < 5);
 
     // set timer for while loop 
     const time_t end_time = time(NULL) + 6;
@@ -49,28 +54,40 @@ void test_app_stress_one_cpu(void)
         */
         if (trigger_asseerts < time(NULL))
         {
-            assert(usage->cpu_percentage_total > 10);
-            assert(usage->cpu_percentage_total < 15);
+            assert(usage_test->cpu_percentage_total > 10);
+            assert(usage_test->cpu_percentage_total < 15);
         }
     }
 
     // check if usage has back to low values after releasing the loop
     sleep(2);
-    assert(usage->cpu_percentage_total > 0);
-    assert(usage->cpu_percentage_total < 5);
+    assert(usage_test->cpu_percentage_total > 0);
+    assert(usage_test->cpu_percentage_total < 5);
 
     // close all threads after test
-    pthread_cancel(reader);
-    pthread_cancel(analyzer);
-    pthread_cancel(printer);
-    pthread_cancel(watchdog);
+    signal_termination_handler(SIGTERM);
 
     pthread_join(reader,    NULL);
     pthread_join(analyzer,  NULL);
     pthread_join(printer,   NULL);
     pthread_join(watchdog,  NULL);
+}
 
-    CPU_info_delete(cpu);
-    CPU_usage_delete(usage);
-    CPU_combined_delete(combined);
+static void signal_termination_handler(int sig)
+{
+    terminate_reader   = 1;
+    terminate_analyzer = 1;
+    terminate_printer  = 1;
+    terminate_watchdog = 1;
+
+    CPU_info_delete(cpu_test);
+    CPU_usage_delete(usage_test);
+    CPU_combined_delete(combined_test);
+
+    if (sig == SIGINT)
+        printf("Program closed by SIGINT signal\n");
+    else if (sig ==SIGTERM)
+        printf("Program closed by SIGTERM signal\n");
+
+    exit(EXIT_SUCCESS);
 }
